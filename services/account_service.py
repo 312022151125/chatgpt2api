@@ -1571,7 +1571,7 @@ class AccountService:
         for token in access_tokens:
             account = self.get_account(token)
             if not account:
-                errors.append({"token": anonymize_token(token), "error": "账号不存在"})
+                errors.append({"token": anonymize_token(token), "error": "Account does not exist"})
                 if progress_id:
                     self.update_relogin_progress(progress_id, token, "跳过", "账号不存在")
                 continue

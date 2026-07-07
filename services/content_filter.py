@@ -154,7 +154,7 @@ def check_request(text: str) -> None:
     # Local sensitive-word match runs on the raw text (cheap, no network).
     for word in config.sensitive_words:
         if word in text:
-            raise HTTPException(status_code=400, detail={"error": "检测到敏感词，拒绝本次任务"})
+            raise HTTPException(status_code=400, detail={"error": "Sensitive word detected. Request rejected."})
     review = config.ai_review
     if not review.get("enabled"):
         return
@@ -186,7 +186,7 @@ def check_request(text: str) -> None:
         if not fail_open:
             raise HTTPException(
                 status_code=503,
-                detail={"error": "AI 审核服务暂时不可用，请稍后重试"},
+                detail={"error": "AI review service is temporarily unavailable. Please try again later."},
             )
 
     try:
@@ -232,7 +232,7 @@ def check_request(text: str) -> None:
     if _is_allow_decision(decision):
         return
     if _is_reject_decision(decision):
-        raise HTTPException(status_code=400, detail={"error": "AI 审核未通过，拒绝本次任务"})
+        raise HTTPException(status_code=400, detail={"error": "AI review rejected the request."})
     # Ambiguous decisions (e.g. "MAYBE", empty content) fall back to fail-open policy.
     _on_failure({
         "event": "ai_review_ambiguous_decision",

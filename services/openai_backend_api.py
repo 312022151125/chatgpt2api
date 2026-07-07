@@ -2282,9 +2282,9 @@ class OpenAIBackendAPI:
             "last_task_error": last_task_error if last_task_error else None,
         })
         exc = ImagePollTimeoutError(
-            f"ChatGPT 生图超时（已等待 {timeout_secs} 秒）。"
-            f"当前超时阈值可在 config.json 中调大 image_poll_timeout_secs，"
-            f"也可能是账号被限流或生图队列拥堵导致。"
+            f"ChatGPT image generation timed out after {timeout_secs} seconds. "
+            f"You can increase image_poll_timeout_secs in config.json, "
+            f"or the account may be rate-limited / the generation queue congested."
         )
         if last_task_error:
             setattr(exc, "task_error", last_task_error)

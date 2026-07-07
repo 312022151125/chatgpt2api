@@ -12,11 +12,11 @@ import { SearchPanel } from "./components/search-panel";
 import { SkillPanel } from "./components/skill-panel";
 
 const tabs = [
-  { value: "skills", title: "搜索Skills" },
-  { value: "search", title: "搜索" },
-  { value: "ppt", title: "PPT生成" },
-  { value: "psd", title: "PSD生成" },
-  { value: "chat", title: "对话" },
+  { value: "skills", title: "Skills" },
+  { value: "search", title: "Search" },
+  { value: "ppt", title: "PPT" },
+  { value: "psd", title: "PSD" },
+  { value: "chat", title: "Chat" },
 ];
 
 export default function DebugPage() {

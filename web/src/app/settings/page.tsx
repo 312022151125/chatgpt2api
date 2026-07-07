@@ -20,11 +20,11 @@ import { UserKeysCard } from "./components/user-keys-card";
 import { useSettingsStore } from "./store";
 
 const settingsTabs = [
-  { value: "basic", title: "基础配置" },
-  { value: "backup", title: "备份" },
-  { value: "keys", title: "用户密钥" },
-  { value: "api-docs", title: "接口接入" },
-  { value: "canvas", title: "画布入口" },
+  { value: "basic", title: "General" },
+  { value: "backup", title: "Backups" },
+  { value: "keys", title: "User keys" },
+  { value: "api-docs", title: "API docs" },
+  { value: "canvas", title: "Canvas" },
   { value: "proxy", title: "FlareSolverr" },
   { value: "cpa", title: "CPA" },
   { value: "sub2api", title: "Sub2API" },

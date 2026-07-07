@@ -122,7 +122,7 @@ ${skillEn}
 
   const copyText = async (text: string) => {
     await navigator.clipboard.writeText(text);
-    toast.success("已复制");
+    toast.success("Copied");
   };
 
   const downloadSkill = (text: string) => {
@@ -135,8 +135,8 @@ ${skillEn}
   };
 
   const versions = [
-    { title: "中文安装指令", desc: "复制后直接发给 Codex 或 Claude，让它安装到本地。", prompt: zhPrompt, skill: skillZh },
     { title: "English install prompt", desc: "Copy and send this to Codex or Claude to install locally.", prompt: enPrompt, skill: skillEn },
+    { title: "Chinese install prompt", desc: "Copy and send this to Codex or Claude to install locally.", prompt: zhPrompt, skill: skillZh },
   ];
 
   return (
@@ -151,11 +151,11 @@ ${skillEn}
             <div className="flex gap-2">
               <Button size="sm" variant="outline" className="cursor-pointer" onClick={() => downloadSkill(item.skill)}>
                 <Download />
-                下载
+                Download
               </Button>
               <Button size="sm" className="cursor-pointer" onClick={() => void copyText(item.prompt)}>
                 <Copy />
-                复制
+                Copy
               </Button>
             </div>
           </div>

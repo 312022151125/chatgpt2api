@@ -2,8 +2,8 @@
 
 import { EditableFilePanel } from "./editable-file-panel";
 
-const defaultPrompt = "按原图位置拆分海报元素并合成可编辑 PSD，保留背景和每个元素图层位置，同时输出每个图层素材 zip。";
+const defaultPrompt = "Split the poster elements according to their original positions and compose an editable PSD. Preserve the background and each element's layer position, and export a zip of each layer asset.";
 
 export function PsdPanel() {
-  return <EditableFilePanel title="PSD生成" kind="psd" endpoint="/v1/psd/generations" defaultPrompt={defaultPrompt} imageRequired />;
+  return <EditableFilePanel title="PSD Generation" kind="psd" endpoint="/v1/psd/generations" defaultPrompt={defaultPrompt} imageRequired />;
 }

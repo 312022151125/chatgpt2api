@@ -105,13 +105,13 @@ class AuthService:
     def _build_key_hash_locked(self, raw_key: str, *, exclude_id: str = "") -> str:
         candidate = self._clean(raw_key)
         if not candidate:
-            raise ValueError("请输入新的专用密钥")
+            raise ValueError("Please enter a new dedicated key")
         admin_key = self._clean(config.auth_key)
         if admin_key and hmac.compare_digest(candidate, admin_key):
-            raise ValueError("这个密钥和管理员密钥冲突了，请换一个新的密钥")
+            raise ValueError("This key conflicts with the admin key. Please use a different one.")
         key_hash = _hash_key(candidate)
         if self._has_key_hash_locked(key_hash, exclude_id=exclude_id):
-            raise ValueError("这个专用密钥已经存在，请换一个新的密钥")
+            raise ValueError("This dedicated key already exists. Please use a different one.")
         return key_hash
 
     def _has_name_locked(self, name: str, *, role: AuthRole | None = None, exclude_id: str = "") -> bool:
@@ -144,7 +144,7 @@ class AuthService:
         if not candidate:
             return self._build_default_name_locked(role, exclude_id=exclude_id)
         if self._has_name_locked(candidate, role=role, exclude_id=exclude_id):
-            raise ValueError("这个名称已经在使用中了，换一个更容易区分的名称吧")
+            raise ValueError("This name is already in use. Please choose a more distinctive name.")
         return candidate
 
     def create_key(self, *, role: AuthRole, name: str = "") -> tuple[dict[str, object], str]:

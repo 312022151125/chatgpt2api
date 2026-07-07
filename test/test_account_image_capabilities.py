@@ -218,10 +218,10 @@ class AuthServiceTests(unittest.TestCase):
             first, _ = service.create_key(role="user", name="Alice")
             second, _ = service.create_key(role="user", name="Bob")
 
-            with self.assertRaisesRegex(ValueError, "这个名称已经在使用中了"):
+            with self.assertRaisesRegex(ValueError, "This name is already in use"):
                 service.create_key(role="user", name="Alice")
 
-            with self.assertRaisesRegex(ValueError, "这个名称已经在使用中了"):
+            with self.assertRaisesRegex(ValueError, "This name is already in use"):
                 service.update_key(second["id"], {"name": "Alice"}, role="user")
 
             updated = service.update_key(first["id"], {"name": "Alice"}, role="user")

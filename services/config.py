@@ -291,9 +291,9 @@ def _validate_image_storage_settings(settings: dict[str, object]) -> None:
     if not _normalize_bool(settings.get("enabled"), False):
         return
     if not str(settings.get("webdav_url") or "").strip():
-        raise ValueError("启用 WebDAV 图片存储后必须填写 WebDAV URL")
+        raise ValueError("WebDAV URL is required when WebDAV image storage is enabled")
     if not str(settings.get("webdav_password") or "").strip():
-        raise ValueError("启用 WebDAV 图片存储后必须填写 WebDAV 密码")
+        raise ValueError("WebDAV password is required when WebDAV image storage is enabled")
 
 
 @dataclass(frozen=True)

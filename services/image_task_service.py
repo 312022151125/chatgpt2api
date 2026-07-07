@@ -268,7 +268,7 @@ class ImageTaskService:
                 if upstream:
                     message = upstream
                 else:
-                    message = "号池中没有可用账号或所有账号均被限流，请检查号池状态（账号额度、是否被封禁、是否到达生图上限）"
+                    message = "No available accounts in the pool or all accounts are rate-limited. Check pool status (quota, banned, or generation limit reached)."
                 error = RuntimeError(message)
                 if account_email:
                     setattr(error, "account_email", account_email)
@@ -415,7 +415,7 @@ class ImageTaskService:
         for task in self._tasks.values():
             if task.get("status") in UNFINISHED_STATUSES:
                 task["status"] = TASK_STATUS_ERROR
-                task["error"] = "服务已重启，未完成的图片任务已中断"
+                task["error"] = "Service restarted; unfinished image tasks were interrupted."
                 task["updated_at"] = _now_iso()
                 changed = True
         return changed
@@ -451,7 +451,7 @@ class ImageTaskService:
             if task.get("status") != TASK_STATUS_ERROR:
                 raise ValueError("task is not in error state")
             error_msg = _clean(task.get("error"))
-            if "超时" not in error_msg:
+            if "timeout" not in error_msg:
                 raise ValueError("task error is not a timeout error")
             conversation_id = _clean(task.get("conversation_id"))
             if not conversation_id:
@@ -494,14 +494,14 @@ class ImageTaskService:
             )
             if not file_ids and not sediment_ids:
                 raise RuntimeError(
-                    f"继续等待 {extra_timeout_secs} 秒后仍未找到图片结果。"
+                    f"Still no image result after waiting an additional {extra_timeout_secs} seconds."
                 )
 
             image_urls = backend.resolve_conversation_image_urls(
                 conversation_id, file_ids, sediment_ids, poll=False,
             )
             if not image_urls:
-                raise RuntimeError("图片 URL 解析失败")
+                raise RuntimeError("Failed to parse image URL")
 
             image_items = [
                 {"b64_json": __import__("base64").b64encode(image_data).decode("ascii")}

@@ -312,9 +312,9 @@ def create_router(app_version: str) -> APIRouter:
         if format == "json":
             return stats_json
         return HTMLResponse(f"""<!DOCTYPE html>
-<html lang="zh">
+<html lang="en">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>号池健康监控 - chatgpt2api</title>
+<title>Account Pool Health - chatgpt2api</title>
 <style>
 *{{margin:0;padding:0;box-sizing:border-box}}
 body{{font-family:system-ui,-apple-system,sans-serif;background:#0f1117;color:#e2e8f0;min-height:100vh}}
@@ -339,24 +339,24 @@ td{{padding:8px 12px;border-top:1px solid #2a2d3a;font-size:14px}}tr:hover td{{b
 </head>
 <body>
 <div class="header">
-<h1><span class="status-dot {'status-ok' if healthy else 'status-degraded'}"></span>号池健康监控</h1>
-<div style="font-size:13px;color:#94a3b8">v{app_version} · 30s 自动刷新</div>
+<h1><span class="status-dot {'status-ok' if healthy else 'status-degraded'}"></span>Account Pool Health</h1>
+<div style="font-size:13px;color:#94a3b8">v{app_version} · 30s auto-refresh</div>
 </div>
 <div class="container">
 <div class="cards">
-<div class="card"><div class="label">号池状态</div><div class="value {'green' if healthy else 'yellow'}">{'正常' if healthy else '异常'}</div></div>
-<div class="card"><div class="label">当前账号</div><div class="value blue">{stats['total']}</div></div>
-<div class="card"><div class="label">累计入库</div><div class="value">{stats['cumulative_total']}</div></div>
-<div class="card"><div class="label">可用账号</div><div class="value green">{stats['active']}</div></div>
-<div class="card"><div class="label">剩余额度</div><div class="value">{stats['total_quota']}</div></div>
-<div class="card"><div class="label">限流</div><div class="value yellow">{stats['limited']}</div></div>
-<div class="card"><div class="label">异常</div><div class="value red">{stats['abnormal']}</div></div>
-<div class="card"><div class="label">禁用</div><div class="value">{stats['disabled']}</div></div>
-<div class="card"><div class="label">成功/失败</div><div class="value">{stats['total_success']}<span style="font-size:18px;color:#94a3b8">/</span><span class="red">{stats['total_fail']}</span></div></div>
+<div class="card"><div class="label">Pool status</div><div class="value {'green' if healthy else 'yellow'}">{'Healthy' if healthy else 'Degraded'}</div></div>
+<div class="card"><div class="label">Current accounts</div><div class="value blue">{stats['total']}</div></div>
+<div class="card"><div class="label">Cumulative</div><div class="value">{stats['cumulative_total']}</div></div>
+<div class="card"><div class="label">Active</div><div class="value green">{stats['active']}</div></div>
+<div class="card"><div class="label">Quota</div><div class="value">{stats['total_quota']}</div></div>
+<div class="card"><div class="label">Limited</div><div class="value yellow">{stats['limited']}</div></div>
+<div class="card"><div class="label">Abnormal</div><div class="value red">{stats['abnormal']}</div></div>
+<div class="card"><div class="label">Disabled</div><div class="value">{stats['disabled']}</div></div>
+<div class="card"><div class="label">Success / Fail</div><div class="value">{stats['total_success']}<span style="font-size:18px;color:#94a3b8">/</span><span class="red">{stats['total_fail']}</span></div></div>
 </div>
-<h2 style="margin-bottom:12px;font-size:16px">账号类型分布</h2>
+<h2 style="margin-bottom:12px;font-size:16px">Account type distribution</h2>
 <table>
-<tr><th>类型</th><th>数量</th></tr>
+<tr><th>Type</th><th>Count</th></tr>
 {''.join(f'<tr><td>{t}</td><td>{c}</td></tr>' for t,c in sorted(stats['by_type'].items()))}
 </table>
 <div class="refresh">JSON: <span class="api-url">/health?format=json</span></div>

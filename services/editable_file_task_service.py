@@ -213,7 +213,7 @@ class EditableFileTaskService:
         for task in self._tasks.values():
             if task.get("status") in UNFINISHED_STATUSES:
                 task["status"] = TASK_STATUS_ERROR
-                task["error"] = "服务已重启，未完成的任务已中断"
+                task["error"] = "Service restarted; unfinished tasks were interrupted."
                 task["ended_ts"] = time.time()
                 task["updated_at"] = _now_iso()
                 task["updated_ts"] = time.time()

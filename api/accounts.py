@@ -191,20 +191,20 @@ def create_router() -> APIRouter:
             if value is not None
         }
         if not updates:
-            raise HTTPException(status_code=400, detail={"error": "还没有检测到改动，请修改后再保存"})
+            raise HTTPException(status_code=400, detail={"error": "No changes detected. Please modify before saving."})
         try:
             item = auth_service.update_key(key_id, updates, role="user")
         except ValueError as exc:
             raise HTTPException(status_code=400, detail={"error": str(exc)}) from exc
         if item is None:
-            raise HTTPException(status_code=404, detail={"error": "这条用户密钥不存在，可能已经被删除"})
+            raise HTTPException(status_code=404, detail={"error": "User key not found; it may have been deleted."})
         return {"item": item, "items": auth_service.list_keys(role="user")}
 
     @router.delete("/api/auth/users/{key_id}")
     async def delete_user_key(key_id: str, authorization: str | None = Header(default=None)):
         require_admin(authorization)
         if not auth_service.delete_key(key_id, role="user"):
-            raise HTTPException(status_code=404, detail={"error": "这条用户密钥不存在，可能已经被删除"})
+            raise HTTPException(status_code=404, detail={"error": "User key not found; it may have been deleted."})
         return {"items": auth_service.list_keys(role="user")}
 
     @router.get("/api/accounts")
@@ -311,7 +311,7 @@ def create_router() -> APIRouter:
         if not items:
             raise HTTPException(
                 status_code=400,
-                detail={"error": "没有可导出的完整账号，需要同时有 access_token、refresh_token 和 id_token"},
+                detail={"error": "No complete accounts to export. access_token, refresh_token, and id_token are all required."},
             )
 
         timestamp = _download_timestamp()
@@ -338,7 +338,7 @@ def create_router() -> APIRouter:
             raise HTTPException(status_code=400, detail={"error": "access_token is required"})
         updates = {key: value for key, value in {"type": body.type, "status": body.status, "quota": body.quota, "proxy": body.proxy}.items() if value is not None}
         if not updates:
-            raise HTTPException(status_code=400, detail={"error": "还没有检测到改动，请修改后再保存"})
+            raise HTTPException(status_code=400, detail={"error": "No changes detected. Please modify before saving."})
         account = account_service.update_account(access_token, updates)
         if account is None:
             raise HTTPException(status_code=404, detail={"error": "account not found"})
