@@ -2,7 +2,9 @@ import base64
 import hashlib
 import json
 import mimetypes
+import queue
 import re
+import threading
 import time
 import uuid
 from pathlib import Path
@@ -226,8 +228,97 @@ def anthropic_sse_stream(items) -> Iterator[str]:
         yield f"data: {json.dumps(error, ensure_ascii=False)}\n\n"
 
 
-def iter_sse_payloads(response: requests.Response) -> Iterator[str]:
-    for raw_line in response.iter_lines():
+UPSTREAM_FIRST_OUTPUT_TIMEOUT_SECS = 150.0
+
+
+class FirstOutputTimeout(TimeoutError):
+    """Raised when an account produces no semantic output before its deadline."""
+
+
+class FirstOutputDeadline:
+    def __init__(self, timeout_secs: float = UPSTREAM_FIRST_OUTPUT_TIMEOUT_SECS) -> None:
+        self._expires_at = time.monotonic() + float(timeout_secs)
+        self._completed = False
+
+    @property
+    def remaining(self) -> float:
+        return max(0.0, self._expires_at - time.monotonic())
+
+    def request_timeout(self, timeout_secs: float) -> float:
+        self.check_expired()
+        return min(float(timeout_secs), self.remaining)
+
+    def is_expired(self) -> bool:
+        return not self._completed and self.remaining <= 0.0
+
+    def check_expired(self) -> None:
+        if self.is_expired():
+            raise FirstOutputTimeout("upstream produced no first output before timeout")
+
+    def complete(self) -> None:
+        if self._completed:
+            return
+        self.check_expired()
+        self._completed = True
+
+
+def _close_timed_response(response: requests.Response) -> None:
+    try:
+        response.close()
+    except Exception:
+        pass
+
+def _iter_timed_response_lines(response: requests.Response, deadline: FirstOutputDeadline) -> Iterator[bytes]:
+    pending = b""
+    chunks: queue.Queue[object] = queue.Queue()
+    stream_end = object()
+
+    def consume() -> None:
+        try:
+            for chunk in response.iter_content():
+                chunks.put(chunk)
+        except BaseException as exc:
+            chunks.put(exc)
+        finally:
+            chunks.put(stream_end)
+
+    threading.Thread(target=consume, daemon=True).start()
+    try:
+        while True:
+            deadline.check_expired()
+            try:
+                chunk = chunks.get(timeout=deadline.remaining)
+            except queue.Empty as exc:
+                raise FirstOutputTimeout("upstream produced no first output before timeout") from exc
+            deadline.check_expired()
+            if chunk is stream_end:
+                break
+            if isinstance(chunk, BaseException):
+                raise chunk
+            chunk_bytes = chunk if isinstance(chunk, bytes) else bytes(chunk)
+            if not chunk_bytes:
+                continue
+            data = pending + chunk_bytes
+            lines = data.splitlines()
+            pending = b""
+            if lines and data[-1:] not in (b"\n", b"\r"):
+                pending = lines.pop()
+            yield from lines
+        if pending:
+            yield pending
+    except FirstOutputTimeout:
+        _close_timed_response(response)
+        raise
+    except (TimeoutError, OSError, requests.exceptions.RequestException) as exc:
+        if deadline.is_expired():
+            _close_timed_response(response)
+            raise FirstOutputTimeout("upstream produced no first output before timeout") from exc
+        raise
+
+
+def iter_sse_payloads(response: requests.Response, deadline: FirstOutputDeadline | None = None) -> Iterator[str]:
+    lines = response.iter_lines() if deadline is None else _iter_timed_response_lines(response, deadline)
+    for raw_line in lines:
         if not raw_line:
             continue
         line = raw_line.decode("utf-8", errors="ignore") if isinstance(raw_line, bytes) else str(raw_line)
@@ -236,7 +327,6 @@ def iter_sse_payloads(response: requests.Response) -> Iterator[str]:
         payload = line[5:].strip()
         if payload:
             yield payload
-
 
 def save_images_from_text(text: str, prefix: str) -> list[Path]:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)

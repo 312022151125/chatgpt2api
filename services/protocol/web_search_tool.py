@@ -5,6 +5,7 @@ from typing import Any
 
 from services.account_service import account_service
 from services.openai_backend_api import OpenAIBackendAPI
+from utils.helper import FirstOutputDeadline, FirstOutputTimeout
 
 WEB_SEARCH_TOOL_TYPES = {"web_search", "web_search_preview", "web_search_preview_2025_03_11"}
 SEARCH_CHAT_MODEL_PREFIXES = (
@@ -153,8 +154,24 @@ def text_with_url_citations(result: dict[str, Any]) -> tuple[str, list[dict[str,
     return text.strip(), annotations
 
 
+def _run_web_search_with_account(query: str) -> tuple[dict[str, Any], str]:
+    excluded_tokens: set[str] = set()
+    while True:
+        token = account_service.get_text_access_token(excluded_tokens)
+        if not token:
+            raise RuntimeError("no available search account")
+        backend = OpenAIBackendAPI(token, deadline=FirstOutputDeadline())
+        try:
+            result = backend.search(query)
+        except FirstOutputTimeout:
+            excluded_tokens.add(token)
+            continue
+        finally:
+            backend.close()
+        account_service.mark_text_used(token)
+        return result, token
+
+
 def run_web_search(query: str) -> dict[str, Any]:
-    token = account_service.get_text_access_token()
-    result = OpenAIBackendAPI(token).search(query)
-    account_service.mark_text_used(token)
+    result, _token = _run_web_search_with_account(query)
     return result

@@ -16,6 +16,8 @@ from services.config import config
 from services.image_storage_service import image_storage_service
 from services.openai_backend_api import ImageContentPolicyError, ImagePollTimeoutError, OpenAIBackendAPI
 from utils.helper import (
+    FirstOutputDeadline,
+    FirstOutputTimeout,
     IMAGE_MODELS,
     extract_image_from_message_content,
     is_codex_image_model,
@@ -683,14 +685,19 @@ def stream_text_deltas(backend: OpenAIBackendAPI, request: ConversationRequest) 
     attempted_tokens: set[str] = set()
     token = getattr(backend, "access_token", "")
     emitted = False
+    first_backend = backend
     while True:
         if token and token in attempted_tokens:
             raise RuntimeError("no available text account")
         if token:
             attempted_tokens.add(token)
-        active_backend = None
+        active_backend = first_backend
+        first_backend = None
+        if active_backend is None:
+            active_backend = OpenAIBackendAPI(access_token=token, deadline=FirstOutputDeadline())
+        else:
+            active_backend.deadline = FirstOutputDeadline()
         try:
-            active_backend = OpenAIBackendAPI(access_token=token)
             for event in conversation_events(
                 active_backend,
                 messages=request.messages,
@@ -702,10 +709,19 @@ def stream_text_deltas(backend: OpenAIBackendAPI, request: ConversationRequest) 
                     continue
                 delta = str(event.get("delta") or "")
                 if delta:
+                    # ponytail: no cross-account replay after text starts; upstream idempotency is required to relax it.
+                    active_backend.complete_first_output()
                     emitted = True
                     yield delta
             account_service.mark_text_used(token)
             return
+        except FirstOutputTimeout:
+            if emitted:
+                raise
+            token = account_service.get_text_access_token(attempted_tokens)
+            if not token:
+                raise
+            continue
         except Exception as exc:
             error_message = str(exc)
             if token and not emitted and is_token_invalid_error(error_message):
@@ -719,8 +735,7 @@ def stream_text_deltas(backend: OpenAIBackendAPI, request: ConversationRequest) 
                     continue
             raise
         finally:
-            if active_backend is not None:
-                active_backend.close()
+            active_backend.close()
 
 
 def collect_text(backend: OpenAIBackendAPI, request: ConversationRequest) -> str:
@@ -1271,6 +1286,7 @@ def _generate_single_image(
     conn_timeout_retry_count = 0
     poll_timeout_retry_count = 0
     account_email = ""
+    timed_out_tokens: set[str] = set()
 
     while True:
         try:
@@ -1282,6 +1298,7 @@ def _generate_single_image(
                 plan_type=plan_type,
                 source_type="codex" if codex_model else None,
                 plan_types=("plus", "team", "pro") if codex_model and not plan_type else None,
+                excluded_tokens=timed_out_tokens,
             )
         except RuntimeError as exc:
             raise ImageGenerationError(str(exc) or "image generation failed", account_email=account_email) from exc
@@ -1300,12 +1317,15 @@ def _generate_single_image(
         })
         backend = None
         try:
-            backend = OpenAIBackendAPI(access_token=token)
+            backend = OpenAIBackendAPI(access_token=token, deadline=FirstOutputDeadline())
             if request.progress_callback:
                 backend.progress_callback = request.progress_callback
             stream_fn = stream_codex_image_outputs if is_codex_image_model(request.model) else stream_image_outputs
             outputs: list[ImageOutput] = []
             for output in stream_fn(backend, request, index, total):
+                if not emitted_for_token:
+                    backend.complete_first_output()
+                    emitted_for_token = True
                 if account_email and not output.account_email:
                     output.account_email = account_email
                 if output.kind == "message" and request.message_as_error:
@@ -1317,7 +1337,6 @@ def _generate_single_image(
                         account_email=account_email,
                         conversation_id=output.conversation_id,
                     )
-                emitted_for_token = True
                 returned_message = output.kind == "message"
                 returned_result = returned_result or output.kind == "result"
                 outputs.append(output)
@@ -1339,6 +1358,18 @@ def _generate_single_image(
                 return outputs
             account_service.mark_image_result(token, True)
             return outputs
+        except FirstOutputTimeout:
+            account_service.mark_image_result(token, False)
+            if emitted_for_token:
+                raise
+            timed_out_tokens.add(token)
+            logger.warning({
+                "event": "image_first_output_timeout_retry",
+                "request_token": token,
+                "account_email": account_email,
+                "index": index,
+            })
+            continue
         except ImagePollTimeoutError as exc:
             account_service.mark_image_result(token, False)
             if account_email:
